@@ -107,18 +107,50 @@ void write_proc( char arg[])
 void read_proc(const char cmd[256])
 {
 	char dummy[256];
+	char other[256];
+	int ii =  0;
+	int count = 0;
 
 	sscanf(cmd, "%s %s", dummy, data_file);
 
-	if ((data = fopen(data_file, "rb")) == NULL)
+	strcpy(other, data_file); 	//check to see if it's an old r file with a long path...
+	while (other[ii] != '\0') {			//maybe it's an old r file with a long path..
+       	// If the current character is '/', increment the count
+       	  if (other[ii] == '/') {
+       		count++;
+       	  }
+          ++ii;
+    	}
+
+	for(ii = 0; ii < count; ii++)	  //find the last /  The file name will be next
+		sscanf(other, "%*[^/]/%255s", other);
+
+	fprintf(stderr,"here and: %s\n",other);
+
+	if( (data = fopen(other, "rb")) != NULL) 
 	{
-		sprintf(msg, "Can't open data file: %s. fopen in read_proc() failed. Check filename, see cmds1.c\n", data_file);
+		sprintf(msg, "Reading %s...\n", other);
 		print_msg(msg);
+
+		/*  reed is in filtersm.c   */
+		if (reed(data, ((strncmp(dummy, "append", 6) == 0) ? TRUE : FALSE)) != 1)
+		{
+			display_active_file(0);
+			fclose(data);
+			//ui_globals.action = MAIN;
+			top();
+			return;
+		}
+		display_active_file(1);
+		fclose(data);
+		sprintf(msg, "Reading %s done.\n", data_file);
+		print_msg(msg);
+		++read_flag; /* file successfully opened */
+		strcpy(data_file, other); 	//put short file name in 'data_file' 
 		//ui_globals.action = MAIN;
 		top();
-		return;
 	}
-	else
+	else if( (data = fopen(data_file, "rb")) != NULL)
 	{
 		sprintf(msg, "Reading %s...\n", data_file);
 		print_msg(msg);
@@ -139,6 +171,16 @@ void read_proc(const char cmd[256])
 		++read_flag; /* file successfully opened */
 		//ui_globals.action = MAIN;
 		top();
+	}
+	else 
+	{
+
+		sprintf(msg, "Can't open data file: %s. Tried %s too.  Check filename and location.. This code is in cmds1.c\n", data_file, other);
+		fprintf(stderr,"%s\n",msg);
+		print_msg(msg);
+		//ui_globals.action = MAIN;
+		top();
+		return;
 	}
 }
   
